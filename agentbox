@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+#
+# Run a command in a microsandbox VM built from localhost/agentbox:latest,
+# with the current directory mounted at the same path.
+#
+# Usage: agentbox <command> [args...]    e.g. agentbox claude
+#
+# Environment:
+#   AGENTBOX_GH_TOKEN  GitHub token. msb substitutes it only in requests to
+#                      api.github.com and github.com; the VM never sees it.
+#   AGENTBOX_CLAUDE_CODE_OAUTH_TOKEN
+#                      Claude Code OAuth token, from `claude setup-token`.
+#                      msb substitutes it only in requests to
+#                      api.anthropic.com; the VM never sees it.
+#   AGENTBOX_DATA_DIR  Host directory for agent state.
+#                      Default: ~/.local/share/agentbox.
+#
+# Requires: msb
+
+AGENTBOX_DATA_DIR="${AGENTBOX_DATA_DIR:-$HOME/.local/share/agentbox}"
+mkdir -p "$AGENTBOX_DATA_DIR/claude"
+
+# Read-only .git so the agent can't plant hooks or config that run on the host.
+git_ro=()
+test -d "$PWD/.git" && git_ro=(-v "$PWD/.git:$PWD/.git:ro")
+
+# Same-path mount keeps file paths and Claude Code's per-project state
+# identical inside and outside the VM.
+exec env \
+  GH_TOKEN="$AGENTBOX_GH_TOKEN" \
+  CLAUDE_CODE_OAUTH_TOKEN="$AGENTBOX_CLAUDE_CODE_OAUTH_TOKEN" \
+  msb run \
+  -c 2 -m 4G \
+  ${AGENTBOX_GH_TOKEN:+--secret GH_TOKEN@api.github.com,github.com} \
+  ${AGENTBOX_CLAUDE_CODE_OAUTH_TOKEN:+--secret CLAUDE_CODE_OAUTH_TOKEN@api.anthropic.com} \
+  -v "$AGENTBOX_DATA_DIR/claude:/home/agent/.claude" \
+  -v "$PWD:$PWD" -w "$PWD" \
+  "${git_ro[@]}" \
+  localhost/agentbox:latest -- "$@"
