@@ -3,7 +3,14 @@
 # Run a command in a microsandbox VM built from localhost/agentbox:latest,
 # with the current directory mounted at the same path.
 #
-# Usage: agentbox <command> [args...]    e.g. agentbox claude
+# Usage: agentbox [--admin] [command [args...]]
+#   e.g. agentbox, agentbox --admin mise install
+#
+#   --admin  Admin mode: mount the shared mise directories writable, to
+#            install toolchains and trust project configurations. Runs
+#            bash if no command is given. Don't run agents in this mode.
+#
+# Without --admin, runs claude if no command is given.
 #
 # Environment:
 #   AGENTBOX_GH_TOKEN  GitHub token. msb substitutes it only in requests to
@@ -12,13 +19,36 @@
 #                      Claude Code OAuth token, from `claude setup-token`.
 #                      msb substitutes it only in requests to
 #                      api.anthropic.com; the VM never sees it.
-#   AGENTBOX_DATA_DIR  Host directory for agent state.
+#   AGENTBOX_DATA_DIR  Host directory for agent state, with claude/ and
+#                      mise/{data,config,state}.
 #                      Default: ~/.local/share/agentbox.
 #
 # Requires: msb
 
+is_admin=
+if test "$1" = --admin; then
+  is_admin=1
+  shift
+  test $# -eq 0 && set -- bash
+fi
+test $# -eq 0 && set -- claude
+
 AGENTBOX_DATA_DIR="${AGENTBOX_DATA_DIR:-$HOME/.local/share/agentbox}"
-mkdir -p "$AGENTBOX_DATA_DIR/claude"
+mise_dir="$AGENTBOX_DATA_DIR/mise"
+mkdir -p "$AGENTBOX_DATA_DIR/claude" "$mise_dir/data" "$mise_dir/config" "$mise_dir/state"
+
+# Agent sessions can't change the shared toolchains, the global mise
+# configuration or the trust record. Paranoid mode ties trust to the
+# file's content hash, so an agent's edit untrusts it. Auto-install is
+# off in agent sessions because it would fail against the read-only
+# data directory; install tools in admin mode.
+mise_env=(MISE_PARANOID=1)
+if test -n "$is_admin"; then
+  mise_mount_suffix=
+else
+  mise_mount_suffix=:ro
+  mise_env+=(MISE_AUTO_INSTALL=false)
+fi
 
 # Read-only .git so the agent can't plant hooks or config that run on the host.
 git_ro=()
@@ -34,6 +64,9 @@ exec env \
   ${AGENTBOX_GH_TOKEN:+--secret GH_TOKEN@api.github.com,github.com} \
   ${AGENTBOX_CLAUDE_CODE_OAUTH_TOKEN:+--secret CLAUDE_CODE_OAUTH_TOKEN@api.anthropic.com} \
   -v "$AGENTBOX_DATA_DIR/claude:/home/agent/.claude" \
+  -v "$mise_dir/data:/home/agent/.local/share/mise$mise_mount_suffix" \
+  -v "$mise_dir/config:/home/agent/.config/mise$mise_mount_suffix" \
+  -v "$mise_dir/state:/home/agent/.local/state/mise$mise_mount_suffix" \
   -v "$PWD:$PWD" -w "$PWD" \
   "${git_ro[@]}" \
-  localhost/agentbox:latest -- "$@"
+  localhost/agentbox:latest -- env "${mise_env[@]}" "$@"
