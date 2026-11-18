@@ -19,8 +19,8 @@
 #                      Claude Code OAuth token, from `claude setup-token`.
 #                      msb substitutes it only in requests to
 #                      api.anthropic.com; the VM never sees it.
-#   AGENTBOX_DATA_DIR  Host directory for agent state, with claude/ and
-#                      mise/{data,config,state}.
+#   AGENTBOX_DATA_DIR  Host directory for agent state, with claude/,
+#                      mise/{data,config,state} and cache/{admin,projects}.
 #                      Default: ~/.local/share/agentbox.
 #
 # Requires: msb
@@ -50,6 +50,19 @@ else
   mise_env+=(MISE_AUTO_INSTALL=false)
 fi
 
+# Per-project ~/.cache, so one project's session can't poison another's.
+# Admin mode gets its own, so agents can't plant downloads that admin
+# mise installs put into the shared toolchains. Name: the path made
+# filename-safe, plus a hash to keep paths like /a/b-c and /a/b/c apart.
+if test -n "$is_admin"; then
+  cache_dir="$AGENTBOX_DATA_DIR/cache/admin"
+else
+  cache_name=$(printf '%s' "${PWD#/}" | tr -c 'A-Za-z0-9._-' '-')
+  cache_hash=$(printf '%s' "$PWD" | sha256sum | cut -c1-8)
+  cache_dir="$AGENTBOX_DATA_DIR/cache/projects/$cache_name-$cache_hash"
+fi
+mkdir -p "$cache_dir"
+
 # Read-only .git so the agent can't plant hooks or config that run on the host.
 git_ro=()
 test -d "$PWD/.git" && git_ro=(-v "$PWD/.git:$PWD/.git:ro")
@@ -67,6 +80,7 @@ exec env \
   -v "$mise_dir/data:/home/agent/.local/share/mise$mise_mount_suffix" \
   -v "$mise_dir/config:/home/agent/.config/mise$mise_mount_suffix" \
   -v "$mise_dir/state:/home/agent/.local/state/mise$mise_mount_suffix" \
+  -v "$cache_dir:/home/agent/.cache" \
   -v "$PWD:$PWD" -w "$PWD" \
   "${git_ro[@]}" \
   localhost/agentbox:latest -- env "${mise_env[@]}" "$@"

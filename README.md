@@ -58,4 +58,4 @@ See [ADRs 0002–0004](docs/decisions/) for the reasoning.
 | --- | --- | --- |
 | `AGENTBOX_GH_TOKEN` | unset | GitHub token, passed as a secret that only reaches `api.github.com` and `github.com`. |
 | `AGENTBOX_CLAUDE_CODE_OAUTH_TOKEN` | unset | Claude Code OAuth token (from `claude setup-token`), passed as a secret that only reaches `api.anthropic.com`. |
-| `AGENTBOX_DATA_DIR` | `~/.local/share/agentbox` | Host directory for agent state: one subdirectory per agent, plus `mise/` with the toolchains (`data`), the global mise configuration (`config`) and the trust record (`state`). |
+| `AGENTBOX_DATA_DIR` | `~/.local/share/agentbox` | Host directory for agent state: one subdirectory per agent, plus `mise/` with the toolchains (`data`), the global mise configuration (`config`) and the trust record (`state`), and `cache/` with admin mode's cache (`admin`) and one cache per project (`projects/`). |
