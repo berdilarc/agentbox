@@ -33,13 +33,15 @@
 #
 # Requires: msb
 
+set -euo pipefail
+
 is_admin=
-if test "$1" = --admin; then
+if [[ ${1-} == --admin ]]; then
   is_admin=1
   shift
-  test $# -eq 0 && set -- bash
+  (($# == 0)) && set -- bash
 fi
-test $# -eq 0 && set -- claude
+(($# == 0)) && set -- claude
 
 AGENTBOX_DATA_DIR="${AGENTBOX_DATA_DIR:-$HOME/.local/share/agentbox}"
 mise_dir="$AGENTBOX_DATA_DIR/mise"
@@ -51,7 +53,7 @@ mkdir -p "$AGENTBOX_DATA_DIR/claude" "$mise_dir/data" "$mise_dir/config" "$mise_
 # off in agent sessions because it would fail against the read-only
 # data directory; install tools in admin mode.
 vm_env=(MISE_PARANOID=1)
-if test -n "$is_admin"; then
+if [[ -n "$is_admin" ]]; then
   mise_mount_suffix=
 else
   mise_mount_suffix=:ro
@@ -60,10 +62,10 @@ fi
 
 # The VM defaults to UTC. Pass the host's zone name, which the image's
 # tzdata resolves.
-if test -n "$AGENTBOX_SHARE_TZ"; then
+if [[ -n "${AGENTBOX_SHARE_TZ-}" ]]; then
   host_tz="${TZ:-$(readlink -f /etc/localtime 2>/dev/null)}"
   host_tz="${host_tz#*/zoneinfo/}"
-  if test -n "$host_tz"; then
+  if [[ -n "$host_tz" ]]; then
     vm_env+=("TZ=$host_tz")
   else
     echo "agentbox: can't determine the host's timezone; using UTC" >&2
@@ -73,14 +75,15 @@ fi
 # Host directories named by variables, mounted read-only at the same path
 # so the variable's value stays valid in the VM.
 shared_dirs=()
-for name in $AGENTBOX_SHARE_DIRS; do
+read -ra share_dir_names <<<"${AGENTBOX_SHARE_DIRS-}"
+for name in "${share_dir_names[@]}"; do
   if ! [[ $name =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
     echo "agentbox: invalid variable name in AGENTBOX_SHARE_DIRS: $name" >&2
     exit 1
   fi
-  dir="${!name}"
-  test -z "$dir" && continue
-  if ! test -d "$dir"; then
+  dir="${!name-}"
+  [[ -z "$dir" ]] && continue
+  if ! [[ -d "$dir" ]]; then
     echo "agentbox: $name=$dir is not a directory; not sharing it" >&2
     continue
   fi
@@ -92,7 +95,7 @@ done
 # Admin mode gets its own, so agents can't plant downloads that admin
 # mise installs put into the shared toolchains. Name: the path made
 # filename-safe, plus a hash to keep paths like /a/b-c and /a/b/c apart.
-if test -n "$is_admin"; then
+if [[ -n "$is_admin" ]]; then
   cache_dir="$AGENTBOX_DATA_DIR/cache/admin"
 else
   cache_name=$(printf '%s' "${PWD#/}" | tr -c 'A-Za-z0-9._-' '-')
@@ -101,19 +104,27 @@ else
 fi
 mkdir -p "$cache_dir"
 
+# Pass the tokens to msb as secrets, under the names gh and Claude Code
+# read. The AGENTBOX_ prefix keeps them apart from any GH_TOKEN or
+# CLAUDE_CODE_OAUTH_TOKEN set on the host for other uses.
+gh_token="${AGENTBOX_GH_TOKEN-}"
+claude_token="${AGENTBOX_CLAUDE_CODE_OAUTH_TOKEN-}"
+secrets=()
+[[ -n "$gh_token" ]] && secrets+=(--secret "GH_TOKEN@api.github.com,github.com")
+[[ -n "$claude_token" ]] && secrets+=(--secret "CLAUDE_CODE_OAUTH_TOKEN@api.anthropic.com")
+
 # Read-only .git so the agent can't plant hooks or config that run on the host.
 git_ro=()
-test -d "$PWD/.git" && git_ro=(-v "$PWD/.git:$PWD/.git:ro")
+[[ -d "$PWD/.git" ]] && git_ro=(-v "$PWD/.git:$PWD/.git:ro")
 
 # Same-path mount keeps file paths and Claude Code's per-project state
 # identical inside and outside the VM.
 exec env \
-  GH_TOKEN="$AGENTBOX_GH_TOKEN" \
-  CLAUDE_CODE_OAUTH_TOKEN="$AGENTBOX_CLAUDE_CODE_OAUTH_TOKEN" \
+  GH_TOKEN="$gh_token" \
+  CLAUDE_CODE_OAUTH_TOKEN="$claude_token" \
   msb run \
   -c 2 -m 4G \
-  ${AGENTBOX_GH_TOKEN:+--secret GH_TOKEN@api.github.com,github.com} \
-  ${AGENTBOX_CLAUDE_CODE_OAUTH_TOKEN:+--secret CLAUDE_CODE_OAUTH_TOKEN@api.anthropic.com} \
+  "${secrets[@]}" \
   -v "$AGENTBOX_DATA_DIR/claude:/home/agent/.claude" \
   -v "$mise_dir/data:/home/agent/.local/share/mise$mise_mount_suffix" \
   -v "$mise_dir/config:/home/agent/.config/mise$mise_mount_suffix" \
