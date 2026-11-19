@@ -7,7 +7,7 @@ FROM debian:trixie-slim
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
-  ca-certificates curl less procps git xz-utils \
+  ca-certificates curl less procps git tzdata xz-utils \
   && rm -rf /var/lib/apt/lists/*
 
 # UID/GID 1000 to match the usual host user, so files written to mounted

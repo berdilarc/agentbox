@@ -22,6 +22,9 @@
 #   AGENTBOX_DATA_DIR  Host directory for agent state, with claude/,
 #                      mise/{data,config,state} and cache/{admin,projects}.
 #                      Default: ~/.local/share/agentbox.
+#   AGENTBOX_SHARE_TZ  If set to any non-empty value, set TZ in the VM to
+#                      the host's timezone: $TZ if set, otherwise the zone
+#                      that /etc/localtime links to.
 #
 # Requires: msb
 
@@ -42,12 +45,24 @@ mkdir -p "$AGENTBOX_DATA_DIR/claude" "$mise_dir/data" "$mise_dir/config" "$mise_
 # file's content hash, so an agent's edit untrusts it. Auto-install is
 # off in agent sessions because it would fail against the read-only
 # data directory; install tools in admin mode.
-mise_env=(MISE_PARANOID=1)
+vm_env=(MISE_PARANOID=1)
 if test -n "$is_admin"; then
   mise_mount_suffix=
 else
   mise_mount_suffix=:ro
-  mise_env+=(MISE_AUTO_INSTALL=false)
+  vm_env+=(MISE_AUTO_INSTALL=false)
+fi
+
+# The VM defaults to UTC. Pass the host's zone name, which the image's
+# tzdata resolves.
+if test -n "$AGENTBOX_SHARE_TZ"; then
+  host_tz="${TZ:-$(readlink -f /etc/localtime 2>/dev/null)}"
+  host_tz="${host_tz#*/zoneinfo/}"
+  if test -n "$host_tz"; then
+    vm_env+=("TZ=$host_tz")
+  else
+    echo "agentbox: can't determine the host's timezone; using UTC" >&2
+  fi
 fi
 
 # Per-project ~/.cache, so one project's session can't poison another's.
@@ -83,4 +98,4 @@ exec env \
   -v "$cache_dir:/home/agent/.cache" \
   -v "$PWD:$PWD" -w "$PWD" \
   "${git_ro[@]}" \
-  localhost/agentbox:latest -- env "${mise_env[@]}" "$@"
+  localhost/agentbox:latest -- env "${vm_env[@]}" "$@"
