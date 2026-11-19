@@ -25,6 +25,11 @@
 #   AGENTBOX_SHARE_TZ  If set to any non-empty value, set TZ in the VM to
 #                      the host's timezone: $TZ if set, otherwise the zone
 #                      that /etc/localtime links to.
+#   AGENTBOX_SHARE_DIRS
+#                      Space-separated names of host variables that hold
+#                      directory paths, e.g. "TF_PLUGIN_CACHE_DIR". Each
+#                      set variable is passed to the VM and its directory
+#                      is mounted read-only at the same path.
 #
 # Requires: msb
 
@@ -65,6 +70,24 @@ if test -n "$AGENTBOX_SHARE_TZ"; then
   fi
 fi
 
+# Host directories named by variables, mounted read-only at the same path
+# so the variable's value stays valid in the VM.
+shared_dirs=()
+for name in $AGENTBOX_SHARE_DIRS; do
+  if ! [[ $name =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+    echo "agentbox: invalid variable name in AGENTBOX_SHARE_DIRS: $name" >&2
+    exit 1
+  fi
+  dir="${!name}"
+  test -z "$dir" && continue
+  if ! test -d "$dir"; then
+    echo "agentbox: $name=$dir is not a directory; not sharing it" >&2
+    continue
+  fi
+  vm_env+=("$name=$dir")
+  shared_dirs+=(-v "$dir:$dir:ro")
+done
+
 # Per-project ~/.cache, so one project's session can't poison another's.
 # Admin mode gets its own, so agents can't plant downloads that admin
 # mise installs put into the shared toolchains. Name: the path made
@@ -98,4 +121,5 @@ exec env \
   -v "$cache_dir:/home/agent/.cache" \
   -v "$PWD:$PWD" -w "$PWD" \
   "${git_ro[@]}" \
+  "${shared_dirs[@]}" \
   localhost/agentbox:latest -- env "${vm_env[@]}" "$@"

@@ -59,4 +59,5 @@ See [ADRs 0002–0004](docs/decisions/) for the reasoning.
 | `AGENTBOX_GH_TOKEN` | unset | GitHub token, passed as a secret that only reaches `api.github.com` and `github.com`. |
 | `AGENTBOX_CLAUDE_CODE_OAUTH_TOKEN` | unset | Claude Code OAuth token (from `claude setup-token`), passed as a secret that only reaches `api.anthropic.com`. |
 | `AGENTBOX_SHARE_TZ` | unset | If set to any non-empty value, the VM uses the host's timezone: `$TZ` if set, otherwise the zone `/etc/localtime` links to. Otherwise the VM uses UTC. |
+| `AGENTBOX_SHARE_DIRS` | unset | Space-separated names of host variables that hold directory paths, such as `TF_PLUGIN_CACHE_DIR`. Each one that is set is passed to the VM, and its directory is mounted read-only at the same path. |
 | `AGENTBOX_DATA_DIR` | `~/.local/share/agentbox` | Host directory for agent state: one subdirectory per agent, plus `mise/` with the toolchains (`data`), the global mise configuration (`config`) and the trust record (`state`), and `cache/` with admin mode's cache (`admin`) and one cache per project (`projects/`). |
