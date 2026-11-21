@@ -19,6 +19,13 @@
 #                      Claude Code OAuth token, from `claude setup-token`.
 #                      msb substitutes it only in requests to
 #                      api.anthropic.com; the VM never sees it.
+#   AGENTBOX_CLOUDSDK_AUTH_ACCESS_TOKEN
+#                      Google Cloud access token, e.g. from
+#                      `gcloud auth print-access-token`. The VM gets it as
+#                      CLOUDSDK_AUTH_ACCESS_TOKEN for gcloud and as
+#                      GOOGLE_OAUTH_ACCESS_TOKEN for Terraform. msb
+#                      substitutes it only in requests to *.googleapis.com;
+#                      the VM never sees it.
 #   AGENTBOX_DATA_DIR  Host directory for agent state, with claude/,
 #                      mise/{data,config,state} and cache/{admin,projects}.
 #                      Default: ~/.local/share/agentbox.
@@ -104,14 +111,20 @@ else
 fi
 mkdir -p "$cache_dir"
 
-# Pass the tokens to msb as secrets, under the names gh and Claude Code
-# read. The AGENTBOX_ prefix keeps them apart from any GH_TOKEN or
-# CLAUDE_CODE_OAUTH_TOKEN set on the host for other uses.
+# Pass the tokens to msb as secrets, under the names gh, Claude Code,
+# gcloud and Terraform read. The AGENTBOX_ prefix keeps them apart from
+# any GH_TOKEN, CLAUDE_CODE_OAUTH_TOKEN or CLOUDSDK_AUTH_ACCESS_TOKEN set
+# on the host for other uses.
 gh_token="${AGENTBOX_GH_TOKEN-}"
 claude_token="${AGENTBOX_CLAUDE_CODE_OAUTH_TOKEN-}"
+google_token="${AGENTBOX_CLOUDSDK_AUTH_ACCESS_TOKEN-}"
 secrets=()
 [[ -n "$gh_token" ]] && secrets+=(--secret "GH_TOKEN@api.github.com,github.com")
 [[ -n "$claude_token" ]] && secrets+=(--secret "CLAUDE_CODE_OAUTH_TOKEN@api.anthropic.com")
+[[ -n "$google_token" ]] && secrets+=(
+  --secret "CLOUDSDK_AUTH_ACCESS_TOKEN@*.googleapis.com"
+  --secret "GOOGLE_OAUTH_ACCESS_TOKEN@*.googleapis.com"
+)
 
 # Read-only .git so the agent can't plant hooks or config that run on the host.
 git_ro=()
@@ -122,6 +135,8 @@ git_ro=()
 exec env \
   GH_TOKEN="$gh_token" \
   CLAUDE_CODE_OAUTH_TOKEN="$claude_token" \
+  CLOUDSDK_AUTH_ACCESS_TOKEN="$google_token" \
+  GOOGLE_OAUTH_ACCESS_TOKEN="$google_token" \
   msb run \
   -c 2 -m 4G \
   "${secrets[@]}" \
