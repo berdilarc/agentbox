@@ -5,9 +5,9 @@
 
 ## Context
 
-The VM's filesystem doesn't outlive the session, so `~/.cache` is empty at the start of every session. Tools that cache there, such as pip, uv and the Go build cache, download and build the same things again each time.
+The VM's filesystem doesn't outlive the session, so `~/.cache` is empty at the start of every session. Tools that cache there, such as pip, uv, and the Go build cache, download and build the same things again each time.
 
-A cache shared by all projects would be writable by every agent session. An agent could put poisoned artifacts there, and sessions for other projects would then use them. This is the cross-project risk that the earlier decisions avoid for the toolchains ([0002](0002-install-toolchains-with-mise.md)), the global mise configuration ([0004](0004-pin-general-tools-in-a-read-only-global-mise-configuration.md)) and the trust record ([0003](0003-trust-project-mise-configurations-only-in-admin-mode.md)).
+A cache shared by all projects would be writable by every agent session. An agent could put poisoned artifacts there, and sessions for other projects would then use them. This is the cross-project risk that the earlier decisions avoid for the toolchains ([0002](0002-install-toolchains-with-mise.md)), the global mise configuration ([0004](0004-pin-general-tools-in-a-read-only-global-mise-configuration.md)), and the trust record ([0003](0003-trust-project-mise-configurations-only-in-admin-mode.md)).
 
 ## Decision
 
@@ -15,7 +15,7 @@ In agent sessions, we will mount a writable host directory at `/home/agent/.cach
 
 Admin mode gets its own cache in `$AGENTBOX_DATA_DIR/cache/admin`, shared by all projects and never mounted in agent sessions. If admin mode used a project's cache, an agent could plant downloads in `~/.cache/mise` that the next admin `mise install` puts into the shared toolchains.
 
-The scope is the XDG cache only. Tool directories outside `~/.cache`, such as `~/go/pkg/mod`, `~/.cargo/registry` and `~/.npm`, are not covered.
+The scope is the XDG cache only. Tool directories outside `~/.cache`, such as `~/go/pkg/mod`, `~/.cargo/registry`, and `~/.npm`, are not covered.
 
 ## Alternatives considered
 

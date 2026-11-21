@@ -27,7 +27,7 @@
 #                      substitutes it only in requests to *.googleapis.com;
 #                      the VM never sees it.
 #   AGENTBOX_DATA_DIR  Host directory for agent state, with claude/,
-#                      mise/{data,config,state} and cache/{admin,projects}.
+#                      mise/{data,config,state}, and cache/{admin,projects}.
 #                      Default: ~/.local/share/agentbox.
 #   AGENTBOX_SHARE_TZ  If set to any non-empty value, set TZ in the VM to
 #                      the host's timezone: $TZ if set, otherwise the zone
@@ -55,7 +55,7 @@ mise_dir="$AGENTBOX_DATA_DIR/mise"
 mkdir -p "$AGENTBOX_DATA_DIR/claude" "$mise_dir/data" "$mise_dir/config" "$mise_dir/state"
 
 # Agent sessions can't change the shared toolchains, the global mise
-# configuration or the trust record. Paranoid mode ties trust to the
+# configuration, or the trust record. Paranoid mode ties trust to the
 # file's content hash, so an agent's edit untrusts it. Auto-install is
 # off in agent sessions because it would fail against the read-only
 # data directory; install tools in admin mode.
@@ -112,8 +112,8 @@ fi
 mkdir -p "$cache_dir"
 
 # Pass the tokens to msb as secrets, under the names gh, Claude Code,
-# gcloud and Terraform read. The AGENTBOX_ prefix keeps them apart from
-# any GH_TOKEN, CLAUDE_CODE_OAUTH_TOKEN or CLOUDSDK_AUTH_ACCESS_TOKEN set
+# gcloud, and Terraform read. The AGENTBOX_ prefix keeps them apart from
+# any GH_TOKEN, CLAUDE_CODE_OAUTH_TOKEN, or CLOUDSDK_AUTH_ACCESS_TOKEN set
 # on the host for other uses.
 gh_token="${AGENTBOX_GH_TOKEN-}"
 claude_token="${AGENTBOX_CLAUDE_CODE_OAUTH_TOKEN-}"

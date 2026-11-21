@@ -5,20 +5,20 @@
 
 ## Context
 
-agentbox runs every agent from one image, `localhost/agentbox:latest`, which has only general tools. Agents working on Go, Rust, JavaScript or other projects can't build, test or run their code, and can't install system packages because they run without sudo.
+agentbox runs every agent from one image, `localhost/agentbox:latest`, which has only general tools. Agents working on Go, Rust, JavaScript, or other projects can't build, test, or run their code, and can't install system packages because they run without sudo.
 
 We need:
 
 - **Per-project versions.** The agent uses the toolchain versions the project pins.
-- **Low maintenance.** Adding a language, version or tool doesn't mean building and loading another image.
+- **Low maintenance.** Adding a language, version, or tool doesn't mean building and loading another image.
 
-Language servers, linters and per-language agent configuration are out of scope.
+Language servers, linters, and per-language agent configuration are out of scope.
 
 ## Decision
 
 We will install [mise](https://mise.jdx.dev) in the image and use it to provide toolchains. Its data directory is mounted from `$AGENTBOX_DATA_DIR/mise/data` and shared by all projects.
 
-Agent sessions mount it read-only and use the versions the project pins (`mise.toml` or `.tool-versions`). A separate admin mode mounts it writable and opens a shell, not as root, where the user installs, updates and removes toolchains. Agents don't run in admin mode.
+Agent sessions mount it read-only and use the versions the project pins (`mise.toml` or `.tool-versions`). A separate admin mode mounts it writable and opens a shell, not as root, where the user installs, updates, and removes toolchains. Agents don't run in admin mode.
 
 ## Alternatives considered
 

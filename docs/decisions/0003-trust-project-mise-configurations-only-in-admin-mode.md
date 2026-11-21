@@ -5,7 +5,7 @@
 
 ## Context
 
-A mise configuration can set environment variables, define hooks and run template commands, so mise loads such a file only after the user trusts it. By default, configurations that only pin versions load without trust, and trust is tied to the directory path, so later edits stay trusted.
+A mise configuration can set environment variables, define hooks, and run template commands, so mise loads such a file only after the user trusts it. By default, configurations that only pin versions load without trust, and trust is tied to the directory path, so later edits stay trusted.
 
 Agents can edit the project's configuration, which is shared with the host. An agent could add code to an already-trusted file that then runs in admin mode ([0002](0002-install-toolchains-with-mise.md)), with write access to the shared toolchains, or in the user's mise on the host.
 

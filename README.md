@@ -33,7 +33,7 @@ From the project you want the agent to work on:
 
 The arguments after `agentbox` are the command to run in the VM (default: `claude`). The VM gets 2 CPUs and 4 GiB of memory, and the current directory is mounted at the same path.
 
-Tools run at the versions the project pins in `mise.toml` or `.tool-versions`, and at the global versions otherwise. Agent sessions load a project's mise configuration only after you trust it in admin mode. In agent sessions the toolchains, the global mise configuration and mise's trust record are read-only. A pinned version that isn't installed fails until you install it in admin mode.
+Tools run at the versions the project pins in `mise.toml` or `.tool-versions`, and at the global versions otherwise. Agent sessions load a project's mise configuration only after you trust it in admin mode. In agent sessions the toolchains, the global mise configuration, and mise's trust record are read-only. A pinned version that isn't installed fails until you install it in admin mode.
 
 ## Admin mode
 
@@ -45,7 +45,7 @@ Admin mode mounts the shared mise directories writable. Run it from a project to
 
 - `mise install` installs the project's pinned versions.
 - `mise use -g <tool>@<version>` adds or updates a global tool.
-- `mise uninstall <tool>@<version>` removes a version. To find candidates, run `mise prune --dry-run`. Don't run `mise prune` itself: only the current project is mounted, so it treats every other project as deleted, removes the versions they use and forgets that you trusted them. For the same reason the dry run also lists versions that other projects still pin, so check before you remove one.
+- `mise uninstall <tool>@<version>` removes a version. To find candidates, run `mise prune --dry-run`. Don't run `mise prune` itself: only the current project is mounted, so it treats every other project as deleted, removes the versions they use, and forgets that you trusted them. For the same reason the dry run also lists versions that other projects still pin, so check before you remove one.
 - `mise trust` trusts the project's configuration, so agent sessions load it. Until you do, mise reports the configuration as not trusted.
 
 mise runs in [paranoid mode](https://mise.jdx.dev/paranoid.html), so trust is tied to the file's content. Any edit makes the configuration untrusted again. Read the change before you trust it again. Don't run agents in admin mode.
@@ -61,4 +61,4 @@ See [ADRs 0002–0004](docs/decisions/) for the reasoning.
 | `AGENTBOX_CLOUDSDK_AUTH_ACCESS_TOKEN` | unset | Google Cloud access token (from `gcloud auth print-access-token`), passed as a secret that only reaches `*.googleapis.com`. The VM gets it as `CLOUDSDK_AUTH_ACCESS_TOKEN` for gcloud and as `GOOGLE_OAUTH_ACCESS_TOKEN` for Terraform. By default it expires after an hour; restart the session to pass a fresh one. |
 | `AGENTBOX_SHARE_TZ` | unset | If set to any non-empty value, the VM uses the host's timezone: `$TZ` if set, otherwise the zone `/etc/localtime` links to. Otherwise the VM uses UTC. |
 | `AGENTBOX_SHARE_DIRS` | unset | Space-separated names of host variables that hold directory paths, such as `TF_PLUGIN_CACHE_DIR`. Each one that is set is passed to the VM, and its directory is mounted read-only at the same path. |
-| `AGENTBOX_DATA_DIR` | `~/.local/share/agentbox` | Host directory for agent state: one subdirectory per agent, plus `mise/` with the toolchains (`data`), the global mise configuration (`config`) and the trust record (`state`), and `cache/` with admin mode's cache (`admin`) and one cache per project (`projects/`). |
+| `AGENTBOX_DATA_DIR` | `~/.local/share/agentbox` | Host directory for agent state: one subdirectory per agent; `mise/`, with the toolchains (`data`), the global mise configuration (`config`), and the trust record (`state`); and `cache/`, with admin mode's cache (`admin`) and one cache per project (`projects/`). |
